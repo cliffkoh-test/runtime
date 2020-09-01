@@ -99,6 +99,20 @@ namespace Microsoft.WebAssembly.Diagnostics
                         //TODO figure out how to stich out more frames and, in particular what happens when real wasm is on the stack
                         var top_func = args?["callFrames"]?[0]?["functionName"]?.Value<string>();
 
+                        if (top_func == "mono_wasm_add_lazy_load_files")
+                        {
+                            var loaded_assemblies = await SendMonoCommand(sessionId, MonoCommands.GetLazyLoadedFiles(), token);
+                            var res_val = loaded_assemblies.Value?["result"]?["value"];
+                            var lazy_loaded_files = res_val?.ToObject<string[]>();
+
+                            var context = GetContext(sessionId);
+                            await LoadSourcesFromFiles(sessionId, lazy_loaded_files, token, context);
+
+                            await SendCommand(sessionId, "Debugger.resume", new JObject(), token);
+                            return true;
+
+                        }
+
                         if (top_func == "mono_wasm_fire_bp" || top_func == "_mono_wasm_fire_bp" || top_func == "_mono_wasm_fire_exception")
                         {
                             return await OnPause(sessionId, args, token);
@@ -786,22 +800,7 @@ namespace Microsoft.WebAssembly.Diagnostics
                     loaded_files = loaded.Value?["result"]?["value"]?.ToObject<string[]>();
                 }
 
-                await
-                foreach (var source in context.store.Load(sessionId, loaded_files, token).WithCancellation(token))
-                {
-                    var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
-                    Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
-
-                    SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
-
-                    foreach (var req in context.BreakpointRequests.Values)
-                    {
-                        if (req.TryResolve(source))
-                        {
-                            await SetBreakpoint(sessionId, context.store, req, true, token);
-                        }
-                    }
-                }
+                await LoadSourcesFromFiles(sessionId, loaded_files, token, context);
             }
             catch (Exception e)
             {
@@ -811,6 +810,26 @@ namespace Microsoft.WebAssembly.Diagnostics
             if (!context.Source.Task.IsCompleted)
                 context.Source.SetResult(context.store);
             return context.store;
+        }
+
+        async Task LoadSourcesFromFiles(SessionId sessionId, string[] loaded_files, CancellationToken token, ExecutionContext context)
+        {
+            await
+            foreach (var source in context.store.Load(sessionId, loaded_files, token).WithCancellation(token))
+            {
+                var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
+                Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
+
+                SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
+
+                foreach (var req in context.BreakpointRequests.Values)
+                {
+                    if (req.TryResolve(source))
+                    {
+                        await SetBreakpoint(sessionId, context.store, req, true, token);
+                    }
+                }
+            }
         }
 
         async Task<DebugStore> RuntimeReady(SessionId sessionId, CancellationToken token)

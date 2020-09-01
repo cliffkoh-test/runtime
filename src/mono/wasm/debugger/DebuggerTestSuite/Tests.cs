@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.WebAssembly.Diagnostics;
@@ -408,25 +409,25 @@ namespace DebuggerTests
                 var dt = new DateTime(2310, 1, 2, 3, 4, 5);
                 await CheckProps(locals, new
                 {
-                    n_int       = TNumber(5),
-                    n_int_null  = TObject("System.Nullable<int>", null),
+                    n_int = TNumber(5),
+                    n_int_null = TObject("System.Nullable<int>", null),
 
-                    n_dt        = TDateTime(dt),
-                    n_dt_null   = TObject("System.Nullable<System.DateTime>", null),
+                    n_dt = TDateTime(dt),
+                    n_dt_null = TObject("System.Nullable<System.DateTime>", null),
 
-                    n_gs        = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
-                    n_gs_null   = TObject("System.Nullable<DebuggerTests.ValueTypesTest.GenericStruct<int>>", null),
+                    n_gs = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
+                    n_gs_null = TObject("System.Nullable<DebuggerTests.ValueTypesTest.GenericStruct<int>>", null),
                 }, "locals");
 
                 // check gs
 
                 var n_gs = GetAndAssertObjectWithName(locals, "n_gs");
-                var n_gs_props = await GetProperties(n_gs["value"]?["objectId"]?.Value<string> ());
+                var n_gs_props = await GetProperties(n_gs["value"]?["objectId"]?.Value<string>());
                 await CheckProps(n_gs_props, new
                 {
-                    List        = TObject("System.Collections.Generic.List<int>", is_null: true),
+                    List = TObject("System.Collections.Generic.List<int>", is_null: true),
                     StringField = TString("n_gs#StringField"),
-                    Options     = TEnum  ("DebuggerTests.Options", "None")
+                    Options = TEnum("DebuggerTests.Options", "None")
                 }, nameof(n_gs));
             });
 
@@ -1023,33 +1024,33 @@ namespace DebuggerTests
                 var dt = new DateTime(2310, 1, 2, 3, 4, 5);
                 await CheckProps(locals, new
                 {
-                    n_i    = TNumber(5),
-                    o_i    = TNumber(5),
-                    o_n_i  = TNumber(5),
-                    o_s    = TString("foobar"),
-                    o_obj  = TObject("Math"),
+                    n_i = TNumber(5),
+                    o_i = TNumber(5),
+                    o_n_i = TNumber(5),
+                    o_s = TString("foobar"),
+                    o_obj = TObject("Math"),
 
-                    n_gs   = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
-                    o_gs   = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
+                    n_gs = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
+                    o_gs = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
                     o_n_gs = TValueType("DebuggerTests.ValueTypesTest.GenericStruct<int>"),
 
-                    n_dt   = TDateTime(dt),
-                    o_dt   = TDateTime(dt),
+                    n_dt = TDateTime(dt),
+                    o_dt = TDateTime(dt),
                     o_n_dt = TDateTime(dt),
 
                     o_null = TObject("object", is_null: true),
-                    o_ia   = TArray("int[]", 2),
+                    o_ia = TArray("int[]", 2),
                 }, "locals");
 
                 foreach (var name in new[] { "n_gs", "o_gs", "o_n_gs" })
                 {
                     var gs = GetAndAssertObjectWithName(locals, name);
-                    var gs_props = await GetProperties(gs["value"]?["objectId"]?.Value<string> ());
+                    var gs_props = await GetProperties(gs["value"]?["objectId"]?.Value<string>());
                     await CheckProps(gs_props, new
                     {
-                        List        = TObject("System.Collections.Generic.List<int>", is_null: true),
+                        List = TObject("System.Collections.Generic.List<int>", is_null: true),
                         StringField = TString("n_gs#StringField"),
-                        Options     = TEnum  ("DebuggerTests.Options", "None")
+                        Options = TEnum("DebuggerTests.Options", "None")
                     }, name);
                 }
 
@@ -1580,7 +1581,7 @@ namespace DebuggerTests
 
                 AssertEqual("WriteLine", top_frame["functionName"]?.Value<string>(), "Expected to be in WriteLine method");
                 var script_id = top_frame["functionLocation"]["scriptId"].Value<string>();
-                Assert.Matches ("^dotnet://(mscorlib|System\\.Console)\\.dll/Console.cs", scripts[script_id]);
+                Assert.Matches("^dotnet://(mscorlib|System\\.Console)\\.dll/Console.cs", scripts[script_id]);
             });
         }
 
@@ -1638,7 +1639,7 @@ namespace DebuggerTests
                 var bp2 = await SetBreakpoint("dotnet://debugger-test.dll/debugger-test.cs", 12, 8);
                 var pause_location = await EvaluateAndCheck(
                     "window.setTimeout(function() { invoke_add(); invoke_add()}, 1);",
-                    "dotnet://debugger-test.dll/debugger-test.cs",  10, 8,
+                    "dotnet://debugger-test.dll/debugger-test.cs", 10, 8,
                     "IntAdd");
 
                 Assert.Equal("other", pause_location["reason"]?.Value<string>());
@@ -1667,7 +1668,7 @@ namespace DebuggerTests
                 var bp2 = await SetBreakpoint("dotnet://debugger-test.dll/debugger-test.cs", 12, 8);
                 var pause_location = await EvaluateAndCheck(
                     "window.setTimeout(function() { invoke_add(); invoke_add()}, 1);",
-                    "dotnet://debugger-test.dll/debugger-test.cs",  10, 8,
+                    "dotnet://debugger-test.dll/debugger-test.cs", 10, 8,
                     "IntAdd");
 
                 Assert.Equal("other", pause_location["reason"]?.Value<string>());
@@ -1695,7 +1696,7 @@ namespace DebuggerTests
                 var bp2 = await SetBreakpoint("dotnet://debugger-test.dll/debugger-test.cs", 12, 8);
                 var pause_location = await EvaluateAndCheck(
                     "window.setTimeout(function() { invoke_add(); invoke_add(); invoke_add(); invoke_add()}, 1);",
-                    "dotnet://debugger-test.dll/debugger-test.cs",  10, 8,
+                    "dotnet://debugger-test.dll/debugger-test.cs", 10, 8,
                     "IntAdd");
 
                 Assert.Equal("other", pause_location["reason"]?.Value<string>());
@@ -1798,6 +1799,59 @@ namespace DebuggerTests
                     ?.Values<JObject>()
                     ?.Where(f => f["functionName"]?.Value<string>() == function_name)
                     ?.FirstOrDefault();
+
+        [Fact]
+        public async Task DebugLazyLoadedAssembly()
+        {
+            var insp = new Inspector();
+            var scripts = SubscribeToScripts(insp);
+            await Ready();
+            await insp.Ready(async (cli, token) =>
+            {
+                var source_location = "dotnet://lazy-debugger-test.dll/lazy-debugger-test.cs";
+                // Make sure that we've processed the lazily-loaded assemblies into the debugger
+                var tcs = new TaskCompletionSource<bool>();
+                insp.On("Debugger.resumed", async (args, token) =>
+                {
+                    tcs.SetResult(true);
+                });
+
+                ctx = new DebugTestContext(cli, insp, token, scripts);
+
+                // Simulate loading an assembly into the framework
+                byte[] bytes = File.ReadAllBytes("../../../lazy-debugger-test/wasm/Debug/lazy-debugger-test.dll");
+                string asm_base64 = Convert.ToBase64String(bytes);
+                bytes = File.ReadAllBytes("../../../lazy-debugger-test/wasm/Debug/lazy-debugger-test.pdb");
+                string pdb_base64 = Convert.ToBase64String(bytes);
+                var load_assemblies = JObject.FromObject(new
+                {
+                    expression = $"{{ let asm_b64 = '{asm_base64}'; let pdb_b64 = '{pdb_base64}'; invoke_static_method('[debugger-test] DebuggerTest:LoadLazyAssembly', asm_b64, pdb_b64); }}"
+                });
+                var load_assemblies_res = await cli.SendCommand("Runtime.evaluate", load_assemblies, token);
+                Assert.True(load_assemblies_res.IsOk);
+
+                // Simulate calling into lazy-loaded code
+                var load_pdbs = JObject.FromObject(new
+                {
+                    expression = "window.setTimeout(function() { invoke_load_lazy_assembly(); }, 1);",
+                });
+                var load_pdbs_res = await cli.SendCommand("Runtime.evaluate", load_pdbs, token);
+                Assert.True(load_pdbs_res.IsOk);
+
+                await Task.WhenAny(tcs.Task, Task.Delay(2000));
+                Assert.Contains(source_location, scripts.Values);
+
+                await SetBreakpoint(source_location, 9, 8);
+
+                var pause_location = await EvaluateAndCheck(
+                   "window.setTimeout(function () { invoke_static_method('[lazy-debugger-test] LazyMath:IntAdd', 5, 10); }, 1);",
+                   source_location, 9, 8,
+                   "IntAdd");
+                var locals = await GetProperties(pause_location["callFrames"][0]["callFrameId"].Value<string>());
+                CheckNumber(locals, "a", 5);
+                CheckNumber(locals, "b", 10);
+            });
+        }
 
         //TODO add tests covering basic stepping behavior as step in/out/over
     }
