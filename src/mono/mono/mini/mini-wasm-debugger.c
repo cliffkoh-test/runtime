@@ -56,6 +56,7 @@ EMSCRIPTEN_KEEPALIVE gboolean mono_wasm_get_deref_ptr_value (void *value_addr, M
 //JS functions imported that we use
 extern void mono_wasm_add_frame (int il_offset, int method_token, int frame_id, const char *assembly_name, const char *method_name);
 extern void mono_wasm_fire_bp (void);
+extern void mono_wasm_add_lazy_load_files(const char *assembly_data, const char *pdb_data);
 extern void mono_wasm_fire_exception (int exception_obj_id, const char* message, const char* class_name, gboolean uncaught);
 extern void mono_wasm_add_obj_var (const char*, const char*, guint64);
 extern void mono_wasm_add_enum_var (const char*, const char*, guint64);
@@ -67,6 +68,7 @@ extern void mono_wasm_add_typed_value (const char *type, const char *str_value, 
 
 G_END_DECLS
 
+static void assembly_load(MonoProfiler *prof, MonoAssembly *assembly);
 static void describe_object_properties_for_klass (void *obj, MonoClass *klass, gboolean isAsyncLocalThis, int gpflags);
 static void handle_exception (MonoException *exc, MonoContext *throw_ctx, MonoContext *catch_ctx, StackFrameInfo *catch_frame);
 
@@ -168,7 +170,7 @@ free_frame_state (void)
 		for (i = 0; i < frames->len; ++i)
 			free_frame ((DbgEngineStackFrame*)g_ptr_array_index (frames, i));
 		g_ptr_array_set_size (frames, 0);
-	}	
+	}
 }
 
 static void
@@ -182,7 +184,7 @@ compute_frames (void) {
 		frames = g_ptr_array_new ();
 	}
 
-	mono_walk_stack_with_ctx (collect_frames, NULL, MONO_UNWIND_NONE, NULL);	
+	mono_walk_stack_with_ctx (collect_frames, NULL, MONO_UNWIND_NONE, NULL);
 }
 static MonoContext*
 tls_get_restore_state (void *tls)
@@ -326,7 +328,7 @@ ss_create_init_args (SingleStepReq *ss_req, SingleStepArgs *ss_args)
 static void
 ss_args_destroy (SingleStepArgs *ss_args)
 {
-	//nothing to do	
+	//nothing to do
 }
 
 static int
@@ -338,7 +340,8 @@ handle_multiple_ss_requests (void) {
 void
 mono_wasm_debugger_init (void)
 {
-	if (!debugger_enabled)
+    DEBUG_PRINTF(1, "mono_wasm_debugger_init\n");
+    if (!debugger_enabled)
 		return;
 
 	DebuggerEngineCallbacks cbs = {
@@ -373,8 +376,11 @@ mono_wasm_debugger_init (void)
 	mono_profiler_set_jit_done_callback (prof, jit_done);
 	//FIXME support multiple appdomains
 	mono_profiler_set_domain_loaded_callback (prof, appdomain_load);
+    // Ensure that PDBs are loaded for any lazy-loaded assembly
+    DEBUG_PRINTF(1, "adding callback\n");
+    mono_profiler_set_assembly_loaded_callback(prof, assembly_load);
 
-	obj_to_objref = g_hash_table_new (NULL, NULL);
+    obj_to_objref = g_hash_table_new (NULL, NULL);
 	objrefs = g_hash_table_new_full (NULL, NULL, NULL, mono_debugger_free_objref);
 
 	mini_get_dbg_callbacks ()->handle_exception = handle_exception;
@@ -383,8 +389,8 @@ mono_wasm_debugger_init (void)
 MONO_API void
 mono_wasm_enable_debugging (int debug_level)
 {
-	DEBUG_PRINTF (1, "DEBUGGING ENABLED\n");
-	debugger_enabled = TRUE;
+    DEBUG_PRINTF(1, "TEST DEBUGGING ENABLED\n");
+    debugger_enabled = TRUE;
 	log_level = debug_level;
 }
 
@@ -451,8 +457,8 @@ mono_wasm_setup_single_step (int kind)
 	return isBPOnNativeCode;
 }
 
-static int 
-get_object_id(MonoObject *obj) 
+static int
+get_object_id(MonoObject *obj)
 {
 	ObjRef *ref;
 	if (!obj)
@@ -467,6 +473,22 @@ get_object_id(MonoObject *obj)
 	g_hash_table_insert (objrefs, GINT_TO_POINTER (ref->id), ref);
 	g_hash_table_insert (obj_to_objref, GINT_TO_POINTER (~((gsize)obj)), ref);
 	return ref->id;
+}
+
+static void
+assembly_load(MonoProfiler *prof, MonoAssembly *assembly)
+{
+    DEBUG_PRINTF(1, "loading assembly\n");
+    MonoImage *assembly_image = assembly->image;
+    MonoImage *pdb_image;
+    MonoDebugHandle *handle = mono_debug_get_handle(image);
+    MonoPPDBFile *ppdb = handle->ppdb;
+    if (ppdb)
+    {
+        pdb_image = mono_ppdb_get_image(ppdb);
+        buffer_add_byte_array(buf, (guint8 *)pdb_image->raw_data, pdb_image->raw_data_len);
+    }
+    mono_wasm_add_lazy_load_files(assembly_image->raw_data, pdb_image->raw_data);
 }
 
 static void
@@ -498,8 +520,8 @@ handle_exception (MonoException *exc, MonoContext *throw_ctx, MonoContext *catch
 EMSCRIPTEN_KEEPALIVE void
 mono_wasm_clear_all_breakpoints (void)
 {
-	DEBUG_PRINTF (1, "CLEAR BREAKPOINTS\n");
-	mono_de_clear_all_breakpoints ();
+    DEBUG_PRINTF(1, "TEST CLEAR BREAKPOINTS\n");
+    mono_de_clear_all_breakpoints ();
 }
 
 EMSCRIPTEN_KEEPALIVE int

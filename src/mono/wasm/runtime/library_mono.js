@@ -77,8 +77,7 @@ var MonoSupportLib = {
 			module ["mono_wasm_new_root_buffer"] = MONO.mono_wasm_new_root_buffer;
 			module ["mono_wasm_new_root"] = MONO.mono_wasm_new_root;
 			module ["mono_wasm_new_roots"] = MONO.mono_wasm_new_roots;
-			module ["mono_wasm_release_roots"] = MONO.mono_wasm_release_roots;
-			module ["mono_wasm_add_lazy_load_files"] = MONO.mono_wasm_add_lazy_load_files;
+			module["mono_wasm_release_roots"] = MONO.mono_wasm_release_roots;
 		},
 
 		_mono_wasm_root_buffer_prototype: {
@@ -98,7 +97,7 @@ var MonoSupportLib = {
 			},
 			/** @returns {ManagedPointer} */
 			get: function (index) {
-				this._check_in_range (index);				
+				this._check_in_range (index);
 				return Module.HEAP32[this.get_address_32 (index)];
 			},
 			set: function (index, value) {
@@ -204,7 +203,7 @@ var MonoSupportLib = {
 				throw new Error ("capacity >= 1");
 
 			capacity = capacity | 0;
-				
+
 			var capacityBytes = capacity * 4;
 			var offset = Module._malloc (capacityBytes);
 			if ((offset % 4) !== 0)
@@ -215,7 +214,7 @@ var MonoSupportLib = {
 			var result = Object.create (this._mono_wasm_root_buffer_prototype);
 			result.__offset = offset;
 			result.__offset32 = (offset / 4) | 0;
-			result.__count = capacity;	
+			result.__count = capacity;
 			result.length = capacity;
 			result.__handle = this.mono_wasm_register_root (offset, capacityBytes, msg || 0);
 
@@ -234,7 +233,7 @@ var MonoSupportLib = {
 		mono_wasm_new_root: function (value) {
 			var index = this._mono_wasm_claim_scratch_index ();
 			var buffer = this._scratch_root_buffer;
-				
+
 			var result = Object.create (this._mono_wasm_root_prototype);
 			result.__buffer = buffer;
 			result.__index = index;
@@ -282,7 +281,7 @@ var MonoSupportLib = {
 		 * Multiple objects may be passed on the argument list.
 		 * 'undefined' may be passed as an argument so it is safe to call this method from finally blocks
 		 *  even if you are not sure all of your roots have been created yet.
-		 * @param {... WasmRoot} roots 
+		 * @param {... WasmRoot} roots
 		 */
 		mono_wasm_release_roots: function () {
 			for (var i = 0; i < arguments.length; i++) {
@@ -340,8 +339,9 @@ var MonoSupportLib = {
 			return exception_obj ;
 		},
 
-		mono_wasm_add_lazy_load_files: function(lazy_loaded_files) {
-			MONO.lazy_loaded_files = lazy_loaded_files;
+		mono_wasm_add_lazy_load_files: function (assembly_data, pdb_data) {
+			console.log("Loading files...");
+			MONO.lazy_loaded_files = { assembly_data, pdb_data };
 			debugger;
 		},
 

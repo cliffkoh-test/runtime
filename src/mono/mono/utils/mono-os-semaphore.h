@@ -24,7 +24,7 @@
 #include <unistd.h>
 #endif
 
-#if defined(USE_MACH_SEMA)
+#if 0
 #include <mach/mach_init.h>
 #include <mach/task.h>
 #include <mach/semaphore.h>
@@ -51,7 +51,7 @@ typedef enum {
 	MONO_SEM_TIMEDWAIT_RET_TIMEDOUT = -2,
 } MonoSemTimedwaitRet;
 
-#if defined(USE_MACH_SEMA)
+#if 0
 
 typedef semaphore_t MonoSemType;
 

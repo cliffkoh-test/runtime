@@ -1830,14 +1830,6 @@ namespace DebuggerTests
                 var load_assemblies_res = await cli.SendCommand("Runtime.evaluate", load_assemblies, token);
                 Assert.True(load_assemblies_res.IsOk);
 
-                // Simulate calling into lazy-loaded code
-                var load_pdbs = JObject.FromObject(new
-                {
-                    expression = "window.setTimeout(function() { invoke_load_lazy_assembly(); }, 1);",
-                });
-                var load_pdbs_res = await cli.SendCommand("Runtime.evaluate", load_pdbs, token);
-                Assert.True(load_pdbs_res.IsOk);
-
                 await Task.WhenAny(tcs.Task, Task.Delay(2000));
                 Assert.Contains(source_location, scripts.Values);
 

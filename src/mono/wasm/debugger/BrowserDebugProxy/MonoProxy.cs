@@ -103,10 +103,26 @@ namespace Microsoft.WebAssembly.Diagnostics
                         {
                             var loaded_assemblies = await SendMonoCommand(sessionId, MonoCommands.GetLazyLoadedFiles(), token);
                             var res_val = loaded_assemblies.Value?["result"]?["value"];
-                            var lazy_loaded_files = res_val?.ToObject<string[]>();
+                            var assembly_data = res_val?["assembly_data"].ToObject<byte[]>();
+                            var pdb_data = res_val?["pdb_data"].ToObject<byte[]>();
 
                             var context = GetContext(sessionId);
-                            await LoadSourcesFromFiles(sessionId, lazy_loaded_files, token, context);
+                            await
+                            foreach (var source in context.store.Add(sessionId, assembly_data, pdb_data, token).WithCancellation(token))
+                            {
+                                var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
+                                Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
+
+                                SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
+
+                                foreach (var req in context.BreakpointRequests.Values)
+                                {
+                                    if (req.TryResolve(source))
+                                    {
+                                        await SetBreakpoint(sessionId, context.store, req, true, token);
+                                    }
+                                }
+                            }
 
                             await SendCommand(sessionId, "Debugger.resume", new JObject(), token);
                             return true;
