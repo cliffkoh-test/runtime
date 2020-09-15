@@ -709,27 +709,43 @@ namespace Microsoft.WebAssembly.Diagnostics
             switch (eventName)
             {
                 case "ADD_ASSEMBLY_PDB":
-                    var context = GetContext(sessionId);
-                    var assembly_data = eventArgs?["assembly_data"].ToObject<byte[]>();
-                    var pdb_data = eventArgs?["pdb_data"].ToObject<byte[]>();
-
-                    await
-                    foreach (var source in context.store.Add(sessionId, assembly_data, pdb_data, token).WithCancellation(token))
+                    try
                     {
-                        var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
-                        Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
+                        var context = GetContext(sessionId);
+                        var assembly_data = eventArgs?["assembly_data"]?.ToObject<byte[]>();
+                        var pdb_data = eventArgs?["pdb_data"]?.ToObject<byte[]>();
 
-                        SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
-
-                        foreach (var req in context.BreakpointRequests.Values)
+                        if (assembly_data == null)
                         {
-                            if (req.TryResolve(source))
+                            logger.LogDebug($"No assembly data provided to load.");
+                            return false;
+                        }
+
+                        var store = await LoadStore(sessionId, token);
+
+                        await
+                        foreach (var source in store.Add(sessionId, assembly_data, pdb_data, token).WithCancellation(token))
+                        {
+                            var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
+                            Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
+
+                            SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
+
+                            foreach (var req in context.BreakpointRequests.Values)
                             {
-                                await SetBreakpoint(sessionId, context.store, req, true, token);
+                                if (req.TryResolve(source))
+                                {
+                                    await SetBreakpoint(sessionId, context.store, req, true, token);
+                                }
                             }
                         }
+                        return true;
                     }
-                    return true;
+                    catch (Exception e)
+                    {
+                        logger.LogDebug($"Failed to load assemblies and PBDs: {e}");
+                        return false;
+                    }
                 default:
                 {
                     logger.LogDebug($"Unknown js event name: {eventName} with args {eventArgs}");
@@ -842,40 +858,9 @@ namespace Microsoft.WebAssembly.Diagnostics
             if (Interlocked.CompareExchange(ref context.store, new DebugStore(logger), null) != null)
                 return await context.Source.Task;
 
-            try
-            {
-                var loaded_files = context.LoadedFiles;
-
-                if (loaded_files == null)
-                {
-                    var loaded = await SendMonoCommand(sessionId, MonoCommands.GetLoadedFiles(), token);
-                    loaded_files = loaded.Value?["result"]?["value"]?.ToObject<string[]>();
-                }
-
-                await
-                foreach (var source in context.store.Load(sessionId, loaded_files, token).WithCancellation(token))
-                {
-                    var scriptSource = JObject.FromObject(source.ToScriptSource(context.Id, context.AuxData));
-                    Log("verbose", $"\tsending {source.Url} {context.Id} {sessionId.sessionId}");
-
-                    SendEvent(sessionId, "Debugger.scriptParsed", scriptSource, token);
-
-                    foreach (var req in context.BreakpointRequests.Values)
-                    {
-                        if (req.TryResolve(source))
-                        {
-                            await SetBreakpoint(sessionId, context.store, req, true, token);
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                context.Source.SetException(e);
-            }
-
             if (!context.Source.Task.IsCompleted)
                 context.Source.SetResult(context.store);
+
             return context.store;
         }
 

@@ -65,7 +65,7 @@ extern void mono_wasm_add_properties_var (const char*, gint32);
 extern void mono_wasm_add_array_item (int);
 extern void mono_wasm_set_is_async_method (guint64);
 extern void mono_wasm_add_typed_value (const char *type, const char *str_value, double value);
-extern void mono_wasm_add_lazy_load_files(const char *assembly_data, const char *pdb_data);
+extern void mono_wasm_add_files(const unsigned char *assembly_data, guint32 assembly_len, const unsigned char *pdb_data, guint32 pdb_len);
 
 G_END_DECLS
 
@@ -477,7 +477,7 @@ get_object_id(MonoObject *obj)
 static void
 assembly_load(MonoProfiler *prof, MonoAssembly *assembly)
 {
-    DEBUG_PRINTF(1, "loading assembly\n");
+    DEBUG_PRINTF(1, assembly->aname.name);
     MonoImage *assembly_image = assembly->image;
     MonoImage *pdb_image = NULL;
     MonoDebugHandle *handle = mono_debug_get_handle(assembly_image);
@@ -485,9 +485,9 @@ assembly_load(MonoProfiler *prof, MonoAssembly *assembly)
     if (ppdb)
     {
         pdb_image = mono_ppdb_get_image(ppdb);
-        mono_wasm_add_lazy_load_files(assembly_image->raw_data, pdb_image->raw_data);
+        mono_wasm_add_files(assembly_image->raw_data, assembly_image->raw_data_len, pdb_image->raw_data, pdb_image->raw_data_len);
     }
-    mono_wasm_add_lazy_load_files(assembly_image->raw_data, NULL);
+    mono_wasm_add_files(assembly_image->raw_data, assembly_image->raw_data_len, NULL, 0);
 }
 
 static void
